@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Replication Code — De Jonghe &amp; Lewis (2026): Identifying Relationship-level Effects Using Covariance Restrictions</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      max-width: 860px;
+      margin: 48px auto;
+      padding: 0 24px;
+      color: #222;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.55rem; margin-bottom: 0.2em; }
+    h2 { font-size: 1.15rem; margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+    h3 { font-size: 1rem; margin-top: 1.4em; margin-bottom: 0.3em; }
+    .citation {
+      background: #f5f5f5;
+      border-left: 4px solid #888;
+      padding: 12px 16px;
+      margin: 1.2em 0;
+      font-size: 0.97rem;
+    }
+    .citation em { font-style: italic; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+      font-size: 0.95rem;
+    }
+    th {
+      background: #f0f0f0;
+      text-align: left;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+    }
+    td {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      vertical-align: top;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      background: #f0f0f0;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.92em;
+    }
+    pre {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      padding: 14px 18px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    ul { padding-left: 1.4em; }
+    li { margin-bottom: 0.3em; }
+    .note {
+      background: #fffbe6;
+      border-left: 4px solid #e6c300;
+      padding: 10px 14px;
+      font-size: 0.93rem;
+      margin: 1em 0;
+    }
+    footer {
+      margin-top: 3em;
+      font-size: 0.85rem;
+      color: #666;
+      border-top: 1px solid #ddd;
+      padding-top: 1em;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Replication Code</h1>
+<p style="font-size:1.05rem; color:#444;">
+  Identifying Relationship-level Effects Using Covariance Restrictions
+</p>
+
+<div class="citation">
+  De Jonghe, O. and Lewis, D. (2026). <em>Identifying Relationship-level Effects Using Covariance Restrictions.</em>
+  ECB Working Paper. [Number forthcoming.]
+</div>
+
+<p>
+  This page provides the code and a sample dataset for the estimation procedure in De Jonghe and Lewis (2026).
+  The paper proposes a method to identify <strong>relationship-level</strong> supply and demand shocks in
+  many-to-many bipartite networks, using covariance restrictions rather than the homogeneity assumptions
+  of the standard <a href="https://doi.org/10.1111/1468-0262.00020" target="_blank">AKM framework (Abowd, Kramarz &amp; Margolis, 1999)</a>.
+  The method is general and applicable to any bipartite network setting —
+  worker–firm matches, buyer–supplier relationships, and beyond.
+  The code provided here implements the application to <strong>credit markets</strong>: given observed
+  changes in loan quantities and interest rates for firm–bank pairs, the estimator recovers a
+  relationship-specific bank loan supply shock and a relationship-specific firm loan demand shock for
+  each pair, without requiring external instruments — generalising approaches such as
+  <a href="https://doi.org/10.1257/aer.98.4.1413" target="_blank">Khwaja &amp; Mian (2008)</a> and
+  <a href="https://doi.org/10.1086/696272" target="_blank">Amiti &amp; Weinstein (2018)</a>
+  to allow for heterogeneous, relationship-level effects.
+  Identification comes from exploiting cross-firm and cross-bank covariance matrices of the joint price–quantity changes.
+</p>
+
+<h2>Files</h2>
+
+<table>
+  <tr>
+    <th>File</th>
+    <th>Type</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>python_Supply_Demand_AKM_restrict_LamFFnorm.py</code></td>
+    <td>Python script</td>
+    <td>
+      Core estimation routine. Reads a long-format panel of firm–bank price and quantity changes,
+      estimates the 2&times;2 mixing matrix <em>A</em>, decomposes observed changes into supply and demand shocks,
+      and runs the AKM overidentification test. Writes two output files: the input data augmented
+      with shock columns, and a one-row summary of results.
+    </td>
+  </tr>
+  <tr>
+    <td><code>csv_FBT_panel_QP_long.csv</code></td>
+    <td>CSV data</td>
+    <td>
+      Sample input dataset in long format. Each row is a firm–bank–time observation with columns:
+      <code>Firm</code>, <code>Bank</code>, <code>Time</code>, <code>dQdh</code> (quantity change),
+      <code>dP</code> (price change). Provided to allow the Python script to be tested immediately,
+      without access to the underlying confidential data.
+    </td>
+  </tr>
+  <tr>
+    <td><code>001_stata_python_integrated_estimation.do</code></td>
+    <td>Stata do-file</td>
+    <td>
+      Example of how the Python script is called inside a full empirical workflow.
+      Loops over countries and time periods: loads and merges raw data, winsorizes and partials out
+      fixed effects and relationship controls via <code>reghdfe</code>, exports the minimalistic CSV
+      for Python, calls the Python script via a shell command (passing country and period as environment
+      variables), reads back the shock output, and runs sanity checks before saving. Intended as a
+      template; users working in R or another language can adapt the logic straightforwardly.
+    </td>
+  </tr>
+</table>
+
+<h2>Quick Start — Python Script Standalone</h2>
+
+<p>
+  To verify that the script runs and to inspect its output, you only need the Python script and the sample CSV.
+  Both files must be in the same folder.
+</p>
+
+<h3>Requirements</h3>
+<ul>
+  <li>Python 3.8 or later</li>
+  <li>Packages: <code>pandas</code>, <code>numpy</code>, <code>scipy</code>, <code>joblib</code></li>
+</ul>
+
+<p>Install missing packages with:</p>
+<pre>pip install pandas numpy scipy joblib</pre>
+
+<h3>Run</h3>
+<pre>python python_Supply_Demand_AKM_restrict_LamFFnorm.py</pre>
+
+<p>The script will print progress to the console and produce two output files in the same folder:</p>
+<ul>
+  <li><code>csv_FBT_panel_QPSD_long.csv</code> — the input data with appended <code>Supply</code> and <code>Demand</code> shock columns</li>
+  <li><code>summary_output.csv</code> — a single-row summary of the estimation results for this run</li>
+</ul>
+
+<h3>User Configuration</h3>
+
+<p>
+  At the top of the script there is a clearly marked user configuration block. The defaults work out of the box
+  with the sample CSV. The configurable parameters are:
+</p>
+
+<table>
+  <tr><th>Parameter</th><th>Default</th><th>What it does</th></tr>
+  <tr>
+    <td><code>country</code>, <code>start_period</code>, <code>end_period</code></td>
+    <td>read from environment variables</td>
+    <td>
+      Purely for labelling: these identifiers are written into <code>summary_output.csv</code> so that
+      results from multiple runs can be traced back to their sample. They do not affect the estimation.
+      When running standalone, they can be set to any string directly in the script.
+    </td>
+  </tr>
+  <tr>
+    <td><code>input_file</code></td>
+    <td><code>csv_FBT_panel_QP_long.csv</code></td>
+    <td>Path to the input CSV. Can be a filename (if the CSV is in the same folder) or an absolute path.</td>
+  </tr>
+  <tr>
+    <td><code>output_shocks_file</code>, <code>output_summary_file</code></td>
+    <td><code>csv_FBT_panel_QPSD_long.csv</code>, <code>summary_output.csv</code></td>
+    <td>Names of the two output files. The shocks file is overwritten on each run; the summary file is appended.</td>
+  </tr>
+  <tr>
+    <td><code>n_jobs</code></td>
+    <td><code>-1</code></td>
+    <td>
+      Number of CPU cores for the parallelised bank loop. <code>-1</code> uses all available cores.
+      Set to <code>1</code> to disable parallelisation (useful for debugging or on shared servers).
+    </td>
+  </tr>
+  <tr>
+    <td><code>random_seed</code></td>
+    <td><code>42</code></td>
+    <td>Random seed for the AKM overidentification test. Fix for reproducibility; set to <code>None</code> to disable.</td>
+  </tr>
+  <tr>
+    <td><code>nstarts</code></td>
+    <td><code>100</code></td>
+    <td>
+      Number of random starting values used in the AKM test optimisation. Higher values give a more reliable
+      minimum at the cost of computation time; 100 is generally sufficient.
+    </td>
+  </tr>
+  <tr>
+    <td><code>significance_level</code></td>
+    <td><code>0.10</code></td>
+    <td>Significance level for the chi-squared rejection threshold in the AKM test (e.g. <code>0.10</code> = 10%).</td>
+  </tr>
+</table>
+
+<h2>Integrating into a Stata Workflow</h2>
+
+<p>
+  The do-file illustrates the full pipeline used in the paper. The key steps for each country–period cell are:
+</p>
+
+<ol>
+  <li><strong>Load and merge</strong> the raw firm–bank panel with sector identifiers, firm–bank relationship characteristics, and borrower-sector-region-time controls.</li>
+  <li><strong>Winsorize</strong> <code>dQdh</code> and <code>dP</code> within each period.</li>
+  <li><strong>Partial out</strong> time fixed effects and lagged relationship characteristics using <code>reghdfe</code>; save residuals (scaled &times;100) as the new <code>dQdh</code> and <code>dP</code>.</li>
+  <li><strong>Create contiguous integer indices</strong> for Firm, Bank, and Time using <code>gegen group()</code>.</li>
+  <li><strong>Export</strong> the five-column CSV <code>(Firm, Bank, Time, dQdh, dP)</code>.</li>
+  <li><strong>Call Python</strong> via a shell command, passing country and period as environment variables:</li>
+</ol>
+
+<pre>shell cmd /c "set COUNTRY=`country' &amp;&amp; set START_PERIOD=`start_period' &amp;&amp; set END_PERIOD=`end_period' &amp;&amp; python &quot;path/to/python_Supply_Demand_AKM_restrict_LamFFnorm.py&quot;"</pre>
+
+<ol start="7">
+  <li><strong>Read back</strong> <code>csv_FBT_panel_QPSD_long.csv</code> and merge the supply and demand shocks into the full preserved dataset.</li>
+  <li><strong>Sanity check</strong>: verify that the correlation between the Stata and Python copies of <code>Q</code> and <code>P</code> exceeds 0.99999 and that the merge is 100% matched before saving.</li>
+</ol>
+
+<p>
+  Users working in R or another environment can follow the same logic: the only interface between the
+  statistical environment and the Python script is the five-column CSV in and the seven-column CSV out.
+</p>
+
+<h2>Input Format</h2>
+
+<table>
+  <tr><th>Column</th><th>Description</th></tr>
+  <tr><td><code>Firm</code></td><td>Integer firm identifier (contiguous, starting at 1)</td></tr>
+  <tr><td><code>Bank</code></td><td>Integer bank identifier (contiguous, starting at 1)</td></tr>
+  <tr><td><code>Time</code></td><td>Integer time identifier (contiguous, starting at 1)</td></tr>
+  <tr><td><code>dQdh</code></td><td>Quantity change (e.g. growth in loan volume), after any desired cleaning and partialling out</td></tr>
+  <tr><td><code>dP</code></td><td>Price change (e.g. change in interest rate), after any desired cleaning and partialling out</td></tr>
+</table>
+
+<p>
+  Not every firm–bank–time combination needs to be present. The script handles unbalanced panels.
+  The identifiers must be contiguous integers starting at 1 (or 0); the do-file uses <code>gegen group()</code>
+  to create these from arbitrary raw identifiers.
+</p>
+
+<h2>Questions and Feedback</h2>
+
+<p>
+  Feedback on the code and the paper is greatly appreciated, and users with suggestions or with data
+  and a context in which they would like to apply the method to a new bipartite network setting are
+  warmly encouraged to reach out. The authors can be contacted at
+  <a href="mailto:olivier.dejonghe@nbb.be">olivier.dejonghe@nbb.be</a> and
+  <a href="mailto:daniel.j.lewis@ucl.ac.uk">daniel.j.lewis@ucl.ac.uk</a>.
+</p>
+
+<footer>
+  De Jonghe, O. and Lewis, D. (2026). <em>Identifying Relationship-level Effects Using Covariance Restrictions.</em>
+  ECB Working Paper. [Number forthcoming.]
+</footer>
+
+</body>
+</html>
